@@ -10,7 +10,18 @@ from exceptions import NoMoveException, EndGameException
 class OthelloGame(object):
 
   HUMAN_MOVE = 0
-  BOT_MOVE = 1
+  BOT_MOVE   = 1
+  HUMAN_WIN  = 2
+  BOT_WIN    = 3
+  DRAW_GAME  = 4
+
+  MESSAGES = {
+    HUMAN_MOVE: "Human Turn",
+    BOT_MOVE:   "Bot Turn",
+    HUMAN_WIN:  "Human Win!",
+    BOT_WIN:    "Bot Win!",
+    DRAW_GAME:  "Draw game!"
+  }
 
   def __init__(self, board, bot, human_color):
     # Pygame Settings
@@ -26,15 +37,24 @@ class OthelloGame(object):
     # Game Settings
     self.board = board
     self.bot = bot
+    self.last_bot_move = self.bot.NOPE_MOVE
+
     self.human_color = human_color
     self.bot_color = self.bot.opposity_color( self.human_color )
-    self.human_moves = None
+
+    self.human_moves = []
+    self.bot_moves = []
     self.state = self.HUMAN_MOVE
-    self.move_flag = True
+
     self.end_score = False
+
+    self.no_move_flag = True
 
     # Bot Executor
     self.bot_thread = None
+
+  # ################################################
+  # Draw Functions
 
   def draw_board(self):
     for x in xrange(0,8):
@@ -58,31 +78,12 @@ class OthelloGame(object):
 
   def draw_possible_moves(self):
     if self.state == self.HUMAN_MOVE:
+      for position in self.human_moves:
 
-      if self.human_moves == None:
-        self.human_moves = self.bot.list_moves( self.board, self.human_color )
+        x = position[0] * self.place_size + self.offset_x + self.place_size / 2
+        y = position[1] * self.place_size + self.offset_y + self.place_size / 2
 
-      if self.human_moves != None and self.human_moves.size != 0:
-
-        for position in self.human_moves:
-
-          x = position[0] * self.place_size + self.offset_x + self.place_size / 2
-          y = position[1] * self.place_size + self.offset_y + self.place_size / 2
-
-          pygame.draw.circle( self.gameDisplay, (147,147,147), ( x, y ), 30 )
-
-        self.move_flag = True
-
-      else:
-
-        self.state == self.BOT_MOVE
-
-        if not self.move_flag:
-          raise EndGameException
-
-        self.move_flag = False
-
-        # raise NoMoveException("Human has no moves")
+        pygame.draw.circle( self.gameDisplay, (147,147,147), ( x, y ), 30 )
 
   def draw_text(self, text, position):
     label = self.text_font.render(text, 1, (255,255,255))
@@ -92,9 +93,6 @@ class OthelloGame(object):
     self.gameDisplay.blit( label, label_rect )
 
   def draw_messages(self):
-    if self.text_font == None:
-      font_file_name = "%s/assets/ubuntumono.ttf" % os.path.dirname(os.path.abspath(__file__))
-      self.text_font = pygame.font.Font(font_file_name, 18)
 
     score_black, score_white = self.bot.count_board_score( self.board )
 
@@ -105,29 +103,26 @@ class OthelloGame(object):
     message_position = ( self.size[0] - 120, 30 )
 
     if self.end_score:
-
-      if score_black > score_white:
-        self.draw_text("Human Win!", message_position )
-
-      elif score_white > score_black:
-        self.draw_text("Bot Win!", message_position )
-
-      else:
-        self.draw_text("Draw game!", message_position )
-
+      self.draw_text( self.MESSAGES[ self.validate_score(score_black, score_white) ], message_position )
     else:
-
-      if self.state == self.HUMAN_MOVE:
-        self.draw_text("Human Turn", message_position )
-
-      elif self.state == self.BOT_MOVE:
-        self.draw_text("Bot Turn", message_position )
+      self.draw_text( self.MESSAGES[ self.state ], message_position )
 
   def draw_alert_message(self, message):
     self.draw_text( message, (200, 10) )
 
-  def opposity_player(self):
-    return self.HUMAN_MOVE if self.state == self.BOT_MOVE else self.BOT_MOVE
+  # ################################################
+  # Logic Functions
+
+  def validate_score(self, score_black, score_white):
+    if score_white > score_black :
+      return self.BOT_WIN
+    elif score_black > score_white:
+      return self.HUMAN_WIN
+    else:
+      return self.DRAW_GAME
+
+  # def opposity_player(self):
+    # return self.HUMAN_MOVE if self.state == self.BOT_MOVE else self.BOT_MOVE
 
   def listen_bot_movement(self):
     if self.state == self.BOT_MOVE:
@@ -140,32 +135,61 @@ class OthelloGame(object):
 
   def execute_bot_movement(self):
     if self.state == self.BOT_MOVE:
-      move = self.bot.play( self.board, self.bot_color )
 
-      if move != None:
-        self.bot.set_color_position( self.board, move, self.bot_color )
+      self.bot_moves = self.bot.list_moves( self.board, self.bot_color )
 
-        # self.human_moves = None
-        # self.move_flag = True
-      # else:
-        # if not self.move_flag:
-          # raise EndGameException
-        # self.move_flag = False
+      if self.bot_moves.size == 0:
 
+        if self.no_move_flag:
+          self.end_score = True
+
+        self.no_move_flag = True
+        print "No bot move"
+        self.state = self.HUMAN_MOVE
+
+      else:
+        self.no_move_flag = False
+
+        self.last_bot_move = self.bot.play( self.board, self.bot_color )
+
+        self.bot.set_color_position( self.board, self.last_bot_move, self.bot_color )
+
+      # Change player to human
       self.state = self.HUMAN_MOVE
+      self.update_human_movements()
+
+      # Clean the thead holder
       self.bot_thread = None
 
+  def update_human_movements(self):
+    self.human_moves = self.bot.list_moves( self.board, self.human_color )
+
+    # If no moves available,
+    # change player to bot
+    if self.human_moves.size == 0:
+
+      if self.no_move_flag:
+        self.end_score = True
+
+      self.no_move_flag = True
+      print "No human move"
+      self.state = self.BOT_MOVE
+
+    else:
+      self.no_move_flag = False
+
   def process_event(self, event):
+    if self.state == self.HUMAN_MOVE:
 
-    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-      click_position = event.pos
+      if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+        click_position = event.pos
 
-      click_position = np.array( click_position )
-      click_position -= (self.offset_x, self.offset_y)
-      click_position /= self.place_size
+        click_position = np.array( click_position )
+        click_position -= (self.offset_x, self.offset_y)
+        click_position /= self.place_size
 
-      if self.human_moves != None:
         if click_position.tolist() in self.human_moves.tolist():
+
           self.bot.set_color_position( self.board, click_position, self.human_color )
           self.state = self.BOT_MOVE
 
@@ -178,6 +202,10 @@ class OthelloGame(object):
 
     pygame.display.set_caption("Othello VideoGame")
 
+    self.update_human_movements()
+
+    self.text_font = pygame.font.Font("%s/assets/ubuntumono.ttf" % os.path.dirname(os.path.abspath(__file__)), 18)
+
     while self.ok:
       for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -187,28 +215,27 @@ class OthelloGame(object):
         # its turn
         self.process_event( event )
 
-      try:
+      # try:
 
-        # Display update
-        self.gameDisplay.fill( (55,117,177) )
-        self.draw_board()
-        self.draw_board_pieces()
-        self.draw_possible_moves()
-        self.draw_messages()
+      # Display update
+      self.gameDisplay.fill( (55,117,177) )
+      self.draw_board()
+      self.draw_board_pieces()
+      self.draw_possible_moves()
+      self.draw_messages()
 
-        # Execute the bot movevent if is
-        # its turn
-        self.listen_bot_movement()
+      # Execute the bot movevent if is
+      # its turn
+      self.listen_bot_movement()
 
-      # except NoMoveException as e:
-        # self.state = self.opposity_player()
-
-      except EndGameException as e1:
-        self.ok = False
-        self.end_score = True
+      # except EndGameException as e1:
+      #   self.ok = False
+      #   self.end_score = True
 
       pygame.display.update()
       self.clock.tick( self.clock_hz )
+
+      if self.end_score: break
 
     if self.end_score:
       print "End game"

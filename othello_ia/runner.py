@@ -24,13 +24,13 @@ def run( args ):
     board = utils.convert_board_from_file( board_file )
 
     # Play the game!
-    bot = DunkBot( max_depth = 4 )
+    bot = DunkBot( max_depth = 9 )
 
-    # move = bot.play( board, color )
-    # print "Selected move: ", move
+    move = bot.play( board, color )
+    print "Selected move: ", move
     # utils.write_move( move )
 
-    print bot.list_moves( board, color )
+    # print bot.list_moves( board, color )
 
     # nope_move = (-1,-1)
     # last_move = nope_move

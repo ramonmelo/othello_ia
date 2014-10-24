@@ -14,12 +14,14 @@ class DunkBot(object):
   A bot that plays Othello Game
   """
 
-  color_black = "black"
-  color_white = "white"
+  COLOR_BLACK = "black"
+  COLOR_WHITE = "white"
 
   WHITE = 'W'
   BLACK = 'B'
   EMPTY = '.'
+
+  NOPE_MOVE = np.array((-1,-1))
 
   ACTIONS = [
     np.array( [  0, -1] ), # UP
@@ -68,8 +70,8 @@ class DunkBot(object):
     color_poll = {
       self.WHITE: self.WHITE,
       self.BLACK: self.BLACK,
-      self.color_white: self.WHITE,
-      self.color_black: self.BLACK
+      self.COLOR_WHITE: self.WHITE,
+      self.COLOR_BLACK: self.BLACK
     }
 
     return color_poll[ color ]
@@ -113,6 +115,8 @@ class DunkBot(object):
 
   def set_color_position(self, board, position, color):
     # Set color in all directions
+
+    if (position == self.NOPE_MOVE).all(): return
 
     for action in self.ACTIONS:
 
@@ -269,7 +273,7 @@ class DunkBot(object):
       beta = float("inf")
     )
 
-    return node["move"] if node else (-1,-1)
+    return node["move"] if node else self.NOPE_MOVE
 
   def select_max_value( self, node, color, alpha, beta ):
 
