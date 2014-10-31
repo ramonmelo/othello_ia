@@ -5,10 +5,9 @@ import os
 import time
 import threading
 
-from exceptions import NoMoveException, EndGameException
-
 class OthelloGame(object):
 
+  # Constant Declarations
   HUMAN_MOVE = 0
   BOT_MOVE   = 1
   HUMAN_WIN  = 2
@@ -24,6 +23,15 @@ class OthelloGame(object):
   }
 
   def __init__(self, board, bot, human_color):
+    '''
+    VideoGame Constructor
+
+    Params:
+      board       : Base board used to initilize the video game
+      bot         : Bot used by the game
+      human_color : Color of the human player
+    '''
+
     # Pygame Settings
     self.size = (600, 640)
     self.clock = pygame.time.Clock()
@@ -57,6 +65,10 @@ class OthelloGame(object):
   # Draw Functions
 
   def draw_board(self):
+    '''
+    Draw the board of the game
+    '''
+
     for x in xrange(0,8):
       for y in xrange(0,8):
         x_pos = (x * self.place_size) + self.offset_x
@@ -66,6 +78,10 @@ class OthelloGame(object):
         pygame.draw.rect( self.gameDisplay, (235, 248, 236, 1), place, 1 )
 
   def draw_board_pieces(self):
+    '''
+    Draw the pieces on the board
+    '''
+
     for idx, place in enumerate( self.board ):
 
       x = (idx % 8) * self.place_size + self.offset_x + self.place_size / 2
@@ -77,6 +93,9 @@ class OthelloGame(object):
         pygame.draw.circle( self.gameDisplay, (0,0,0), ( x, y ), 30 )
 
   def draw_possible_moves(self):
+    '''
+    Draw the possible movevents for human
+    '''
     if self.state == self.HUMAN_MOVE:
       for position in self.human_moves:
 
@@ -86,6 +105,14 @@ class OthelloGame(object):
         pygame.draw.circle( self.gameDisplay, (147,147,147), ( x, y ), 30 )
 
   def draw_text(self, text, position):
+    '''
+    Draw a text
+
+    Params:
+      text     : Text to be drawn
+      position : Position of the text
+    '''
+
     label = self.text_font.render(text, 1, (255,255,255))
     label_rect = label.get_rect()
     label_rect.topleft = position
@@ -93,6 +120,10 @@ class OthelloGame(object):
     self.gameDisplay.blit( label, label_rect )
 
   def draw_messages(self):
+    '''
+    Draw the hints on the screen, the current score,
+    the current player
+    '''
 
     score_black, score_white = self.bot.count_board_score( self.board )
 
@@ -107,13 +138,22 @@ class OthelloGame(object):
     else:
       self.draw_text( self.MESSAGES[ self.state ], message_position )
 
-  def draw_alert_message(self, message):
-    self.draw_text( message, (200, 10) )
-
   # ################################################
   # Logic Functions
 
   def validate_score(self, score_black, score_white):
+    '''
+    Infers the current winning of the game
+
+    Params:
+      score_black : The score of the black player
+      score_white : The score of the white player
+
+    Return:
+      The ID of the Message for the current winning
+      player
+    '''
+
     if score_white > score_black :
       return self.BOT_WIN
     elif score_black > score_white:
@@ -121,10 +161,12 @@ class OthelloGame(object):
     else:
       return self.DRAW_GAME
 
-  # def opposity_player(self):
-    # return self.HUMAN_MOVE if self.state == self.BOT_MOVE else self.BOT_MOVE
-
   def listen_bot_movement(self):
+    '''
+    Initiate the bot turn on the game
+
+    Start the thread used to select the bot movevent
+    '''
     if self.state == self.BOT_MOVE:
 
       if self.bot_thread == None:
@@ -134,6 +176,11 @@ class OthelloGame(object):
         self.bot_thread.start()
 
   def execute_bot_movement(self):
+    '''
+    Thread function used to call the play (think) method
+    of the bot
+    '''
+
     if self.state == self.BOT_MOVE:
 
       self.bot_moves = self.bot.list_moves( self.board, self.bot_color )
@@ -162,6 +209,10 @@ class OthelloGame(object):
       self.bot_thread = None
 
   def update_human_movements(self):
+    '''
+    Update the current available movevents for
+    the human player
+    '''
     self.human_moves = self.bot.list_moves( self.board, self.human_color )
 
     # If no moves available,
@@ -179,6 +230,13 @@ class OthelloGame(object):
       self.no_move_flag = False
 
   def process_event(self, event):
+    '''
+    Process the click action of the human
+    to execute his movevent
+
+    Params:
+      event : Event to be processed
+    '''
     if self.state == self.HUMAN_MOVE:
 
       if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -194,6 +252,10 @@ class OthelloGame(object):
           self.state = self.BOT_MOVE
 
   def start(self):
+    '''
+    Init the VideoGame
+    '''
+
     pygame.init()
     pygame.font.init()
 
@@ -227,10 +289,6 @@ class OthelloGame(object):
       # Execute the bot movevent if is
       # its turn
       self.listen_bot_movement()
-
-      # except EndGameException as e1:
-      #   self.ok = False
-      #   self.end_score = True
 
       pygame.display.update()
       self.clock.tick( self.clock_hz )

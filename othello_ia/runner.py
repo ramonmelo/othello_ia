@@ -24,41 +24,33 @@ def run( args ):
     board = utils.convert_board_from_file( board_file )
 
     # Play the game!
-    bot = DunkBot( max_depth = 9 )
+    nope_move = DunkBot.NOPE_MOVE
+    last_move = nope_move
 
-    move = bot.play( board, color )
-    print "Selected move: ", move
-    # utils.write_move( move )
+    total_time = 0.0
 
-    # print bot.list_moves( board, color )
+    for depth in xrange(3, 6):
+        print "--------------------------------"
+        print "New try..."
 
-    # nope_move = (-1,-1)
-    # last_move = nope_move
+        start = time.clock()
 
-    # total_time = 0.0
+        bot = DunkBot( max_depth = depth )
+        move = tuple( bot.play( board, color ) )
 
-    # for depth in xrange(3, 6):
-    #     print "--------------------------------"
-    #     print "New try..."
+        if (move == nope_move).all() and (last_move != nope_move).all():
+            move = last_move
 
-    #     start = time.clock()
+        print "Selected move: ", move
 
-    #     bot = DunkBot( max_depth = depth )
-    #     move = tuple( bot.play( board, color ) )
+        utils.write_move( move )
 
-    #     if move == nope_move and last_move != nope_move:
-    #         move = last_move
+        total_time += time.clock() - start
 
-    #     print "Selected move: ", move
+        print "Total time: ", total_time
+        if total_time > 4: break
 
-    #     utils.write_move( move )
-
-    #     total_time += time.clock() - start
-
-    #     print "Total time: ", total_time
-    #     if total_time > 4: break
-
-    #     last_move = move
+        last_move = move
 
 if __name__ == "__main__":
     run( sys.argv )

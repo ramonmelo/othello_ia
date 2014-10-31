@@ -1,11 +1,6 @@
 
 import numpy as np
-import strategies
 import time
-
-DEBUG = True
-def debug(msg):
-    if DEBUG: print msg
 
 class DunkBot(object):
   """
@@ -14,15 +9,21 @@ class DunkBot(object):
   A bot that plays Othello Game
   """
 
+  # Constant declarations
+
+  # Color types
   COLOR_BLACK = "black"
   COLOR_WHITE = "white"
 
+  # Color type on board
   WHITE = 'W'
   BLACK = 'B'
   EMPTY = '.'
 
+  # None movement
   NOPE_MOVE = np.array((-1,-1))
 
+  # Available actions
   ACTIONS = [
     np.array( [  0, -1] ), # UP
     np.array( [  0,  1] ), # DOWN
@@ -34,31 +35,54 @@ class DunkBot(object):
     np.array( [  1,  1] ), # DOWN_RIGHT
   ]
 
+  # Position modifier for each position
+  # on the board
   POSITION_MODIFIER = np.array([
-     4, -2,  2,  2,  2,  2, -2,  4,
-    -2, -2,  0,  0,  0,  0, -2, -2,
+     4, -4,  2,  2,  2,  2, -4,  4,
+    -4, -4,  0,  0,  0,  0, -4, -4,
      2,  0,  0,  0,  0,  0,  0,  2,
      2,  0,  0,  0,  0,  0,  0,  2,
      2,  0,  0,  0,  0,  0,  0,  2,
      2,  0,  0,  0,  0,  0,  0,  2,
-    -2, -2,  0,  0,  0,  0, -2, -2,
-     4, -2,  2,  2,  2,  2, -2,  4
+    -4, -4,  0,  0,  0,  0, -4, -4,
+     4, -4,  2,  2,  2,  2, -4,  4
   ])
 
   def __init__(self, max_depth = 4):
+    """
+    Dunk Constructor
+
+    Params:
+      max_depth   : Max depth of MiniMax search
+
+    Defaults:
+      max_depth   : 4
+    """
+
     self.max_depth = max_depth
 
     print "Init with max depth: ",  self.max_depth
 
   @property
   def max_depth(self):
-      return self._max_depth
+    return self._max_depth
 
   @max_depth.setter
   def max_depth(self, value):
       self._max_depth = value
 
   def opposity_color(self, color):
+    '''
+    Return the opposity color for the
+    given color
+
+    Params:
+      color : Color to be switched
+
+    Return:
+      Opposity color
+    '''
+
     color_change = {
       self.WHITE: self.BLACK,
       self.BLACK: self.WHITE
@@ -67,6 +91,17 @@ class DunkBot(object):
     return color_change[ self.transform_color( color ) ]
 
   def transform_color(self, color):
+    '''
+    Transform a color to internal representation
+    on the board
+
+    Params:
+      color : Color string the be converted
+
+    Return:
+      Internal representation of the color
+    '''
+
     color_poll = {
       self.WHITE: self.WHITE,
       self.BLACK: self.BLACK,
@@ -77,9 +112,29 @@ class DunkBot(object):
     return color_poll[ color ]
 
   def print_board(self, board):
+    '''
+    Pretty print a board
+
+    Params:
+      board : Board to be printed
+    '''
+
     print board.reshape((8,8))
 
   def count_board_score(self, board):
+    '''
+    Count the current score for each color
+
+    Params:
+      board : Board used to count the score
+
+    Return:
+      Tuple with the current score with
+      black points followed by white points
+
+      (score_black, score_white)
+    '''
+
     score_black = 0
     score_white = 0
 
@@ -92,15 +147,61 @@ class DunkBot(object):
     return score_black, score_white
 
   def get_value(self, board, x, y):
+    '''
+    Get the value of a position on a board
+
+    Can raise a IndexError if the index is
+    outside the range of (0-7)
+
+    Params:
+      board : Board to get the value
+      x     : X position on the board
+              Range (0-7)
+      y     : Y position on the board
+              Range (0-7)
+
+    Return:
+      The value of the position on the board
+    '''
+
     if not (0 <= x <= 7 and 0 <= y <= 7):
         raise IndexError
 
     return board[ x + y * 8 ]
 
   def set_value(self, board, x, y, value):
+    '''
+    Set a value to a position on the board
+
+    Can raise a IndexError if the index is
+    outside the range of (0-7)
+
+    Params:
+      board : Board to set the value
+      x     : X position on the board
+              Range (0-7)
+      y     : Y position on the board
+              Range (0-7)
+      value : Value to be setted
+    '''
+
+    if not (0 <= x <= 7 and 0 <= y <= 7):
+        raise IndexError
+
     board[ x + y * 8 ] = value
 
   def get_color_positions(self, board, color):
+    '''
+    Return a list of position of a determined color
+
+    Params:
+      board : Board to search the color
+      color : Color to be searched
+
+    Return:
+      List of positions of the passed color on the
+      board
+    '''
 
     color_positions = []
 
@@ -114,7 +215,16 @@ class DunkBot(object):
     return color_positions
 
   def set_color_position(self, board, position, color):
-    # Set color in all directions
+    '''
+    Change all pieces on the board that are vertical,
+    horizontal or diagonal with the passed position
+
+    Params:
+      board    : Board where the pieces will be changed
+      position : Final position used as anchor for
+                 changing
+      color    : Color to be setted on the board
+    '''
 
     if (position == self.NOPE_MOVE).all(): return
 
@@ -148,6 +258,18 @@ class DunkBot(object):
 
 
   def set_color_direction(self, board, base_position, final_position, action, color):
+    '''
+    Set color to the board in the direction of the action
+    from the base_position until reach the final_position
+
+    Params:
+      board          : Board where the color will be setted
+      base_position  : Starting position for changing
+      final_position : End position for changing
+      action         : Action used to move on the board
+      color          : Color to be setted
+    '''
+
     current_pos = base_position
 
     while True:
@@ -166,6 +288,19 @@ class DunkBot(object):
         current_pos = current_pos + action
 
   def calculate_score(self, parent, board, move):
+    '''
+    Calculate the score of a board based on the amount
+    of changed pieces and the position modifier
+
+    Params:
+      parent : Parent node from of the current node
+      board  : Board of the current node
+      move   : Movement used the change from Parent to
+               current node
+
+    Return:
+      The calculated score of the board
+    '''
 
     score = 0
 
@@ -179,6 +314,21 @@ class DunkBot(object):
     return score
 
   def create_node(self, board, parent, action, move):
+    '''
+    Create a new node based the new board
+
+    Params:
+      board  : New created board that this node will
+               represent
+      parent : Parent node from the current node was
+               originated
+      action : Action used the create the new node
+      move   : Final position where the new pieces
+               will be placed
+
+    Return:
+      The new node
+    '''
 
     node = {
         "board": board,
@@ -192,6 +342,20 @@ class DunkBot(object):
     return node
 
   def execute_action(self, base_position, board, action, current_color):
+    '''
+    Test if a action movement based on a position and color is valid
+
+    Params:
+      base_position : Starting position to init the movement
+      board         : Board where the movement will be tested
+      action        : Action used to move on the board
+      current_color : Color used in the test
+
+    Return:
+      A tuple with two values:
+        valid         : True if is a valid movement, False otherwise
+        test_position : Final position where a piece can be placed
+    '''
 
     other_color = self.opposity_color(current_color)
     test_position = base_position + action
@@ -223,6 +387,17 @@ class DunkBot(object):
     return valid, test_position
 
   def expand(self, node, color):
+    '''
+    Exapnd a node based on a color. Create all valid new board
+    derived from the base node board
+
+    Params:
+      node  : Node to be expanded
+      color : Color used to expand the current board
+
+    Return:
+      List of valid nodes expanded from the base node
+    '''
 
     result_list = []
 
@@ -249,8 +424,6 @@ class DunkBot(object):
             color = color
           )
 
-          # self.print_board( new_board )
-
           result_list.append(
             self.create_node(
               board = new_board,
@@ -265,6 +438,18 @@ class DunkBot(object):
   # MiniMax Alpha-Beta Implementation
 
   def select_move( self, root_node, color ):
+    '''
+    Select the best movement based on the current board
+    and color. Applies the MiniMax Alpha-Beta algorithm
+    to select the movement.
+
+    Params:
+      root_node : Base node to be used on search
+      color     : Color side to search the best movement
+
+    Return:
+      The best movement available after the search
+    '''
 
     value, node = self.select_max_value(
       node = root_node,
@@ -276,6 +461,20 @@ class DunkBot(object):
     return node["move"] if node else self.NOPE_MOVE
 
   def select_max_value( self, node, color, alpha, beta ):
+    '''
+    Max value search part of the MiniMax Alpha-Beta search
+
+    Params:
+      node  : Base node on the Max value search
+      color : Color to expand on the board
+      alpha : The best Max Value
+      beta  : The best Min Value
+
+    Return:
+      A tuple with two values:
+        alpha : Best Max Value
+        node  : Best node on the current search
+    '''
 
     if node["depth"] == self.max_depth:
       return node["score"], node
@@ -313,6 +512,20 @@ class DunkBot(object):
     return alpha, best_node
 
   def select_min_value( self, node, color, alpha, beta ):
+    '''
+    Min value search part of the MiniMax Alpha-Beta search
+
+    Params:
+      node  : Base node on the Max value search
+      color : Color to expand on the board
+      alpha : The best Max Value
+      beta  : The best Min Value
+
+    Return:
+      A tuple with two values:
+        beta : Best Min Value
+        node  : Best node on the current search
+    '''
 
     if node["depth"] == self.max_depth:
       return node["score"], node
@@ -348,18 +561,18 @@ class DunkBot(object):
 
     return beta, best_node
 
-  # def select_move( self, root_node, color ):
-  #   expand_list = self.expand(
-  #     node = root_node,
-  #     color = color
-  #   )
-  #   best_node = None
-  #   for node in expand_list:
-  #     if best_node == None or node["score"] > best_node["score"]:
-  #       best_node = node
-  #   return best_node["move"] if best_node else (-1,-1)
-
   def list_moves( self, board, color ):
+    '''
+    List all available movements based on
+    the board and color
+
+    Params:
+      board : Base board
+      color : Color the list the movements
+
+    Return:
+      List of available movements
+    '''
 
     color = self.transform_color( color )
 
@@ -378,6 +591,18 @@ class DunkBot(object):
     return np.array( [ node["move"] for node in expand_list ] )
 
   def play( self, board, color ):
+    '''
+    Entry point for the bot thinking process
+
+    Params:
+      board : Base board where the bot will search
+              the best movement
+      color : Color which the bot must search for
+
+    Return:
+      The best movement for the color
+    '''
+
     color = self.transform_color( color )
 
     root_node = self.create_node(

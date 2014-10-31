@@ -16,7 +16,7 @@ def run( args ):
     board = utils.convert_board_from_file( board_file )
 
     # Create the BOT
-    bot = DunkBot( max_depth = 2 )
+    bot = DunkBot( max_depth = 5 )
 
     # Start the Video Game
     video_game = OthelloGame( board, bot, bot.transform_color( color ) )
